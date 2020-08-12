@@ -1,0 +1,139 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Gerardo Mondragón"
+date: "8/11/2020"
+output: 
+    html_document:
+        keep_md: true
+---
+
+# **Overview**
+This is the write-up part of the course project. The data is about a group of people doing barbell lifts correctly and incorrectly, as measured by on-body accelerometers. The goal is to predict, from this data, if the lift was made correctly or incorrectly. The source for this data is:
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. **Qualitative Activity Recognition of Weight Lifting Exercises**. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+# **Setting up the environment**
+## **Loading libraries**
+
+```{r setup, warning=FALSE, message=FALSE}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(corrplot)
+set.seed(123)
+```
+
+## **Loading and cleaning up the data**
+```{r load data, cache=TRUE}
+# Download and read the data
+training <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))
+testing <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+
+# Partition the data
+inTrain <- createDataPartition(training$classe, p = 0.7, list = F)
+trainset <- training[inTrain, ]
+testset <- training[-inTrain, ]
+```
+
+In order to reduce the amount of variables (160) in the partitions, we will remove such variables with near zero variance.
+```{r remove NZV,cache=TRUE}
+NZV <- nearZeroVar(trainset)
+trainset <- trainset[, -NZV]
+testset <- testset[, -NZV]
+```
+
+Now we only have 104 variables. However, we can further reduce this number by removing variables that are over 95% missing values. 
+```{r remove NA}
+isNA <- sapply(trainset, function(x) mean(is.na(x))) > 0.95
+trainset <- trainset[, isNA == F]
+testset <- testset[, isNA == F]
+```
+
+This results in 59 variables. Lastly, we will remove the first five columns as they are identification variables, and so at the end, we have 54 variables.
+```{r remove first cols}
+trainset <- trainset[, -(1:5)]
+testset <- testset[, -(1:5)]
+```
+
+Now we need to set the *classe* variable to be a factor instead of a character variable.
+```{r factor classe}
+trainset$classe <- as.factor(trainset$classe)
+testset$classe <- as.factor(testset$classe)
+```
+
+# **Analysis**
+
+The first step to my analysis is a correlation analysis before any actual modeling. The most strongly correlated variables appear in darker colors in the plot shown below. 
+```{r correlation}
+corrMatrix <- cor(trainset[, -54])
+corrplot(corrMatrix, order = "FPC", method = "color", type = "lower",
+         tl.cex = 0.8, tl.col = rgb(0, 0, 0))
+```
+
+# **Prediction Model**
+Now for the main part, fitting a model that best predicts the way the barlifts were made. To this end, I will use three different models, and the one with highest accuracy will be deemed the best one. These models are:
+
+- Random Forests
+- Decision Tree
+- Generalized Boosted Model (GBM)
+
+## **Random Forests**
+```{r random forests, cache=TRUE}
+set.seed(123)
+# Using trainControl() to control computational nuances.
+RFcontrol <- trainControl("cv", 3, verboseIter = F)
+# Fitting the model
+fit_rf <- train(classe ~., method = "rf", data = trainset, trcontrol = RFcontrol)
+fit_rf$finalModel
+```
+
+Now we create the prediction, create a confusion matrix and plot it.
+```{r prediction rf}
+predict_rf <- predict(fit_rf, newdata = testset)
+confusionMat_rf <- confusionMatrix(predict_rf, testset$classe)
+confusionMat_rf
+plot(confusionMat_rf$table, col = confusionMat_rf$byClass,
+     main = paste("Random Forest Accuracy =", round(confusionMat_rf$overall["Accuracy"], 4)))
+```
+
+## **Decision Trees**
+```{r decision trees, warning=FALSE}
+set.seed(123)
+fit_dt <- rpart(classe ~., method = "class", data = trainset)
+fancyRpartPlot(fit_dt)
+```
+
+Now we create the prediction, create a confusion matrix and plot it.
+```{r prediction dt}
+predict_dt <- predict(fit_dt, newdata = testset, type = "class")
+confusionMat_dt <- confusionMatrix(predict_dt, testset$classe)
+confusionMat_dt
+plot(confusionMat_dt$table, col = confusionMat_dt$byClass,
+    main = paste("Decision Trees Accuracy =", round(confusionMat_dt$overall["Accuracy"], 4)))
+```
+
+## **Generalized Boosted Model (GBM)**
+```{r gbm, cache=TRUE}
+set.seed(123)
+GBMcontrol <- trainControl("repeatedcv", 5, 1)
+fit_gbm <- train(classe ~., method = "gbm", data = trainset, trControl = GBMcontrol, verbose = F)
+fit_gbm$finalModel
+```
+
+Now we create the prediction, create a confusion matrix and plot it.
+```{r prediction gbm}
+predict_gbm <- predict(fit_gbm, newdata = testset)
+confusionMat_gbm <- confusionMatrix(predict_gbm, testset$classe)
+confusionMat_gbm
+plot(confusionMat_gbm$table, col = confusionMat_gbm$byClass, 
+    main = paste("GBM Accuracy =", round(confusionMat_gbm$overall["Accuracy"], 4)))
+```
+
+# Predicting 
+Since the best model as measured by accuracy is Random Forests, we will use this model to predict the values.
+```{r predict testing}
+results <- predict(fit_rf, newdata = testing)
+results
+```
