@@ -3,8 +3,8 @@ title: "Practical Machine Learning Course Project"
 author: "Gerardo Mondragón"
 date: "8/11/2020"
 output: 
-    html_document:
-        keep_md: true
+    html_document: 
+      keep_md: yes
 ---
 
 # **Overview**
@@ -170,7 +170,7 @@ plot(confusionMat_rf$table, col = confusionMat_rf$byClass,
      main = paste("Random Forest Accuracy =", round(confusionMat_rf$overall["Accuracy"], 4)))
 ```
 
-![](Project_files/figure-html/prediction rf-1.png)<!-- -->
+![](Project_files/figure-html/prediction_rf-1.png)<!-- -->
 
 ## **Generalized Boosted Model (GBM)**
 
@@ -235,7 +235,7 @@ plot(confusionMat_gbm$table, col = confusionMat_gbm$byClass,
     main = paste("GBM Accuracy =", round(confusionMat_gbm$overall["Accuracy"], 4)))
 ```
 
-![](Project_files/figure-html/prediction gbm-1.png)<!-- -->
+![](Project_files/figure-html/prediction_gbm-1.png)<!-- -->
 
 # **Sample Error and Out of Sample Error**
 We know that the most accurate model is Random Forests, with an accuracy of
