@@ -12,6 +12,8 @@ This is the write-up part of the course project. The data is about a group of pe
 
 Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. **Qualitative Activity Recognition of Weight Lifting Exercises**. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
 
+Please visit my [github repository webpage](https://github.com/JerryMN/PracticalML) to view the complete code.
+
 # **Setting up the environment**
 ## **Loading libraries**
 
@@ -82,39 +84,42 @@ corrplot(corrMatrix, order = "FPC", method = "color", type = "lower",
 ![](Project_files/figure-html/correlation-1.png)<!-- -->
 
 # **Prediction Model**
-Now for the main part, fitting a model that best predicts the way the barlifts were made. To this end, I will use three different models, and the one with highest accuracy will be deemed the best one. These models are:
+Now for the main part, fitting a model that best predicts the way the barlifts were made. To this end, we will use two different models, and the one with highest accuracy will be deemed the best one. These models are:
 
 - Random Forests
-- Decision Tree
 - Generalized Boosted Model (GBM)
+
+In addition, we are using the *trainControl()* function to apply a cross validation so we can reduce the sample error.
 
 ## **Random Forests**
 
 ```r
 set.seed(123)
-# Using trainControl() to control computational nuances.
 RFcontrol <- trainControl("cv", 3, verboseIter = F)
 # Fitting the model
 fit_rf <- train(classe ~., method = "rf", data = trainset, trcontrol = RFcontrol)
-fit_rf$finalModel
+fit_rf
 ```
 
 ```
+## Random Forest 
 ## 
-## Call:
-##  randomForest(x = x, y = y, mtry = param$mtry, trcontrol = ..1) 
-##                Type of random forest: classification
-##                      Number of trees: 500
-## No. of variables tried at each split: 27
+## 13737 samples
+##    53 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
 ## 
-##         OOB estimate of  error rate: 0.25%
-## Confusion matrix:
-##      A    B    C    D    E  class.error
-## A 3904    1    0    0    1 0.0005120328
-## B    6 2647    5    0    0 0.0041384500
-## C    0    7 2389    0    0 0.0029215359
-## D    0    0    9 2242    1 0.0044404973
-## E    0    0    0    5 2520 0.0019801980
+## No pre-processing
+## Resampling: Bootstrapped (25 reps) 
+## Summary of sample sizes: 13737, 13737, 13737, 13737, 13737, 13737, ... 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.9918623  0.9897040
+##   27    0.9957242  0.9945902
+##   53    0.9914190  0.9891447
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 27.
 ```
 
 Now we create the prediction, create a confusion matrix and plot it.
@@ -166,66 +171,6 @@ plot(confusionMat_rf$table, col = confusionMat_rf$byClass,
 ```
 
 ![](Project_files/figure-html/prediction rf-1.png)<!-- -->
-
-## **Decision Trees**
-
-```r
-set.seed(123)
-fit_dt <- rpart(classe ~., method = "class", data = trainset)
-fancyRpartPlot(fit_dt)
-```
-
-![](Project_files/figure-html/decision trees-1.png)<!-- -->
-
-Now we create the prediction, create a confusion matrix and plot it.
-
-```r
-predict_dt <- predict(fit_dt, newdata = testset, type = "class")
-confusionMat_dt <- confusionMatrix(predict_dt, testset$classe)
-confusionMat_dt
-```
-
-```
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction    A    B    C    D    E
-##          A 1459   86    0   13    2
-##          B  104  855   61   75   51
-##          C    0   57  856   37    3
-##          D   92   81   99  759   86
-##          E   19   60   10   80  940
-## 
-## Overall Statistics
-##                                           
-##                Accuracy : 0.8274          
-##                  95% CI : (0.8175, 0.8369)
-##     No Information Rate : 0.2845          
-##     P-Value [Acc > NIR] : < 2.2e-16       
-##                                           
-##                   Kappa : 0.7823          
-##                                           
-##  Mcnemar's Test P-Value : NA              
-## 
-## Statistics by Class:
-## 
-##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            0.8716   0.7507   0.8343   0.7873   0.8688
-## Specificity            0.9760   0.9387   0.9800   0.9273   0.9648
-## Pos Pred Value         0.9353   0.7461   0.8982   0.6795   0.8476
-## Neg Pred Value         0.9503   0.9401   0.9655   0.9570   0.9703
-## Prevalence             0.2845   0.1935   0.1743   0.1638   0.1839
-## Detection Rate         0.2479   0.1453   0.1455   0.1290   0.1597
-## Detection Prevalence   0.2651   0.1947   0.1619   0.1898   0.1884
-## Balanced Accuracy      0.9238   0.8447   0.9072   0.8573   0.9168
-```
-
-```r
-plot(confusionMat_dt$table, col = confusionMat_dt$byClass,
-    main = paste("Decision Trees Accuracy =", round(confusionMat_dt$overall["Accuracy"], 4)))
-```
-
-![](Project_files/figure-html/prediction dt-1.png)<!-- -->
 
 ## **Generalized Boosted Model (GBM)**
 
@@ -292,8 +237,34 @@ plot(confusionMat_gbm$table, col = confusionMat_gbm$byClass,
 
 ![](Project_files/figure-html/prediction gbm-1.png)<!-- -->
 
-# Predicting 
-Since the best model as measured by accuracy is Random Forests, we will use this model to predict the values.
+# **Sample Error and Out of Sample Error**
+We know that the most accurate model is Random Forests, with an accuracy of
+
+```r
+acc_rf <- confusionMat_rf$overall["Accuracy"]
+acc_rf
+```
+
+```
+##  Accuracy 
+## 0.9983008
+```
+
+Thus, we can calculate the sample error as follows:
+
+```r
+1 - acc_rf
+```
+
+```
+##    Accuracy 
+## 0.001699235
+```
+
+Since the out of sample error is always larger than the sample error, we can infer that the out of sample error will be bigger than 0.17%
+
+# **Predicting**
+Since the best model as measured by accuracy is Random Forests, we will use this model to show the predictions for the 20 test values, which are as follows.
 
 ```r
 results <- predict(fit_rf, newdata = testing)
