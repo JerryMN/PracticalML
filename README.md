@@ -32,13 +32,18 @@ set.seed(123)
 
 ```r
 # Download and read the data
-training <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))
-testing <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
 
 # Partition the data
 inTrain <- createDataPartition(training$classe, p = 0.7, list = F)
 trainset <- training[inTrain, ]
 testset <- training[-inTrain, ]
+dim(trainset)
+```
+
+```
+## [1] 13737   160
 ```
 
 In order to reduce the amount of variables (160) in the partitions, we will remove such variables with near zero variance.
@@ -62,6 +67,11 @@ This results in 59 variables. Lastly, we will remove the first five columns as t
 ```r
 trainset <- trainset[, -(1:5)]
 testset <- testset[, -(1:5)]
+dim(trainset)
+```
+
+```
+## [1] 13737    54
 ```
 
 Now we need to set the *classe* variable to be a factor instead of a character variable.
@@ -73,7 +83,7 @@ testset$classe <- as.factor(testset$classe)
 
 # **Analysis**
 
-The first step to my analysis is a correlation analysis before any actual modeling. The most strongly correlated variables appear in darker colors in the plot shown below. 
+The first step to my analysis is a correlation analysis before any actual modeling. The most strongly correlated variables appear in darker colors in the plot shown below.
 
 ```r
 corrMatrix <- cor(trainset[, -54])
@@ -82,6 +92,8 @@ corrplot(corrMatrix, order = "FPC", method = "color", type = "lower",
 ```
 
 ![](Project_files/figure-html/correlation-1.png)<!-- -->
+
+However, we are not interested in seeing the correlation between the variables, but rather how these variables as a whole can be used to predict *another* variable -- in this case, correctness of barlifts.
 
 # **Prediction Model**
 Now for the main part, fitting a model that best predicts the way the barlifts were made. To this end, we will use two different models, and the one with highest accuracy will be deemed the best one. These models are:
